@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>YouTube URL Shortener</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            padding: 40px;
+            max-width: 600px;
+            width: 100%;
+        }
+
+        h1 {
+            color: #333;
+            text-align: center;
+            margin-bottom: 10px;
+            font-size: 28px;
+        }
+
+        .subtitle {
+            text-align: center;
+            color: #666;
+            margin-bottom: 30px;
+            font-size: 14px;
+        }
+
+        .input-group {
+            margin-bottom: 20px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            color: #555;
+            font-weight: 600;
+            font-size: 14px;
+        }
+
+        input[type="text"] {
+            width: 100%;
+            padding: 15px;
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            font-size: 16px;
+            transition: border-color 0.3s;
+        }
+
+        input[type="text"]:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .btn {
+            width: 100%;
+            padding: 15px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn:active {
+            transform: translateY(0);
+        }
+
+        .result-container {
+            margin-top: 30px;
+            display: none;
+        }
+
+        .result-container.show {
+            display: block;
+        }
+
+        .result-box {
+            background: #f8f9fa;
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            padding: 15px;
+            margin-bottom: 15px;
+            word-break: break-all;
+        }
+
+        .result-url {
+            color: #667eea;
+            font-weight: 600;
+            font-size: 16px;
+        }
+
+        .btn-copy {
+            width: 100%;
+            padding: 12px;
+            background: #28a745;
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.3s, transform 0.2s;
+        }
+
+        .btn-copy:hover {
+            background: #218838;
+            transform: translateY(-2px);
+        }
+
+        .btn-copy.copied {
+            background: #5cb85c;
+        }
+
+        .error-message {
+            background: #fee;
+            border: 2px solid #fcc;
+            color: #c33;
+            padding: 15px;
+            border-radius: 10px;
+            margin-top: 20px;
+            display: none;
+        }
+
+        .error-message.show {
+            display: block;
+        }
+
+        .success-message {
+            background: #efe;
+            border: 2px solid #cfc;
+            color: #3c3;
+            padding: 10px;
+            border-radius: 10px;
+            margin-top: 10px;
+            text-align: center;
+            display: none;
+            font-size: 14px;
+        }
+
+        .success-message.show {
+            display: block;
+        }
+
+        @media (max-width: 600px) {
+            .container {
+                padding: 30px 20px;
+            }
+
+            h1 {
+                font-size: 24px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎥 YouTube URL Shortener</h1>
+        <p class="subtitle">Clean up your YouTube links by removing unnecessary parameters</p>
+        
+        <div class="input-group">
+            <label for="youtubeUrl">Paste Your YouTube URL:</label>
+            <input 
+                type="text" 
+                id="youtubeUrl" 
+                placeholder="https://youtu.be/-t92bkmRJVE?si=kHAnTtxEeKoc5EVR"
+            >
+        </div>
+
+        <button class="btn" onclick="shortenUrl()">Shorten URL</button>
+
+        <div class="error-message" id="errorMessage"></div>
+
+        <div class="result-container" id="resultContainer">
+            <label>Shortened URL:</label>
+            <div class="result-box">
+                <div class="result-url" id="resultUrl"></div>
+            </div>
+            <button class="btn-copy" id="copyBtn" onclick="copyToClipboard()">Copy to Clipboard</button>
+            <div class="success-message" id="successMessage">✓ Copied to clipboard!</div>
+        </div>
+    </div>
+
+    <script>
+        // Function to extract video ID from various YouTube URL formats
+        function extractVideoId(url) {
+            // Regular expressions to match different YouTube URL patterns
+            const patterns = [
+                /(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/|youtube\.com\/v\/|youtube\.com\/shorts\/)([a-zA-Z0-9_-]{11})/,
+                /youtube\.com\/watch\?.*v=([a-zA-Z0-9_-]{11})/
+            ];
+
+            // Try each pattern to find a match
+            for (let pattern of patterns) {
+                const match = url.match(pattern);
+                if (match && match[1]) {
+                    return match[1]; // Return the video ID
+                }
+            }
+
+            return null; // No valid video ID found
+        }
+
+        // Function to validate if the URL is a YouTube URL
+        function isValidYouTubeUrl(url) {
+            // Check if URL contains YouTube domains
+            const youtubePatterns = [
+                /^https?:\/\/(www\.)?youtube\.com/,
+                /^https?:\/\/(www\.)?youtu\.be/,
+                /^https?:\/\/(www\.)?m\.youtube\.com/
+            ];
+
+            return youtubePatterns.some(pattern => pattern.test(url));
+        }
+
+        // Function to show error message
+        function showError(message) {
+            const errorElement = document.getElementById('errorMessage');
+            errorElement.textContent = message;
+            errorElement.classList.add('show');
+            
+            // Hide result container if showing
+            document.getElementById('resultContainer').classList.remove('show');
+        }
+
+        // Function to hide error message
+        function hideError() {
+            document.getElementById('errorMessage').classList.remove('show');
+        }
+
+        // Main function to shorten the URL
+        function shortenUrl() {
+            // Get the input value
+            const inputUrl = document.getElementById('youtubeUrl').value.trim();
+
+            // Hide any previous error messages
+            hideError();
+
+            // Validate that input is not empty
+            if (!inputUrl) {
+                showError('Please enter a YouTube URL');
+                return;
+            }
+
+            // Validate that the URL is a YouTube URL
+            if (!isValidYouTubeUrl(inputUrl)) {
+                showError('Please enter a valid YouTube URL (youtube.com or youtu.be)');
+                return;
+            }
+
+            // Extract the video ID
+            const videoId = extractVideoId(inputUrl);
+
+            // Check if video ID was successfully extracted
+            if (!videoId) {
+                showError('Could not extract video ID from the URL. Please check the format.');
+                return;
+            }
+
+            // Create the shortened URL (using youtu.be format)
+            const shortenedUrl = `https://youtu.be/${videoId}`;
+
+            // Display the result
+            document.getElementById('resultUrl').textContent = shortenedUrl;
+            document.getElementById('resultContainer').classList.add('show');
+
+            // Reset copy button state
+            const copyBtn = document.getElementById('copyBtn');
+            copyBtn.textContent = 'Copy to Clipboard';
+            copyBtn.classList.remove('copied');
+
+            // Hide success message
+            document.getElementById('successMessage').classList.remove('show');
+        }
+
+        // Function to copy the shortened URL to clipboard
+        function copyToClipboard() {
+            const resultUrl = document.getElementById('resultUrl').textContent;
+            const copyBtn = document.getElementById('copyBtn');
+            const successMessage = document.getElementById('successMessage');
+
+            // Use the Clipboard API to copy text
+            navigator.clipboard.writeText(resultUrl).then(function() {
+                // Success - update button appearance
+                copyBtn.textContent = '✓ Copied!';
+                copyBtn.classList.add('copied');
+                successMessage.classList.add('show');
+
+                // Reset button after 2 seconds
+                setTimeout(function() {
+                    copyBtn.textContent = 'Copy to Clipboard';
+                    copyBtn.classList.remove('copied');
+                    successMessage.classList.remove('show');
+                }, 2000);
+            }).catch(function(err) {
+                // Fallback for older browsers
+                console.error('Could not copy text: ', err);
+                alert('Copied: ' + resultUrl);
+            });
+        }
+
+        // Allow pressing Enter key to trigger shortening
+        document.getElementById('youtubeUrl').addEventListener('keypress', function(event) {
+            if (event.key === 'Enter') {
+                shortenUrl();
+            }
+        });
+    </script>
+</body>
+</html>
